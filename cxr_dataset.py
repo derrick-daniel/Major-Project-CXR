@@ -35,7 +35,7 @@ class CXRDataset(Dataset):
                 if len(self.df[self.df[finding] == 1]) > 0:
                     self.df = self.df[self.df[finding] == 1]
                 else:
-                    print("No positive cases exist for "+LABEL+", returning all unfiltered cases")
+                    print("No positive cases exist for "+ finding +", returning all unfiltered cases")
             else:
                 print("cannot filter on finding " + finding +
                       " as not in data - please check spelling")
