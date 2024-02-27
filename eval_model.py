@@ -70,7 +70,7 @@ def make_pred_multilabel(data_transforms, model, PATH_TO_IMAGES):
             #pred_df = pred_df.append(thisrow, ignore_index=True)
             pred_df = pd.concat([pred_df, pd.DataFrame([thisrow])], ignore_index=True)
             #true_df = true_df.append(truerow, ignore_index=True)
-            true_df = pd.concat([true_df, pd.DataFrame([thisrow])], ignore_index=True)
+            true_df = pd.concat([true_df, pd.DataFrame([truerow])], ignore_index=True)
 
 
         if(i % 10 == 0):
@@ -99,15 +99,14 @@ def make_pred_multilabel(data_transforms, model, PATH_TO_IMAGES):
                     continue
         actual = true_df[column]
         pred = pred_df["prob_" + column]
-        thisrow = {}
-        thisrow['label'] = column
-        thisrow['auc'] = np.nan
+        thisrow = {'label': column, 'auc': np.nan}  # Initialize thisrow with default values
         try:
             thisrow['auc'] = sklm.roc_auc_score(
-                actual.as_matrix().astype(int), pred.as_matrix())
-        except BaseException:
-            print("can't calculate auc for " + str(column))
-        auc_df = auc_df.append(thisrow, ignore_index=True)
+                actual.to_numpy().astype(int), pred.to_numpy())
+        except ValueError as e:  # More specific exception handling
+            print(f"Can't calculate AUC for {column}: {str(e)}")
+        auc_df = auc_df.append(thisrow, ignore_index=True)  
+
 
     pred_df.to_csv("results/preds.csv", index=False)
     auc_df.to_csv("results/aucs.csv", index=False)

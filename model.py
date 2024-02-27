@@ -20,6 +20,7 @@ import os
 import time
 from shutil import copyfile
 from shutil import rmtree
+from copy import deepcopy
 
 # data science imports
 import pandas as pd
@@ -58,7 +59,7 @@ def checkpoint(model, best_loss, epoch, LR):
 
     torch.save(state, 'results/checkpoint')
 
-
+""" 
 def train_model(
         model,
         criterion,
@@ -68,23 +69,7 @@ def train_model(
         dataloaders,
         dataset_sizes,
         weight_decay):
-    """
-    Fine tunes torchvision model to NIH CXR data.
 
-    Args:
-        model: torchvision model to be finetuned (densenet-121 in this case)
-        criterion: loss criterion (binary cross entropy loss, BCELoss)
-        optimizer: optimizer to use in training (SGD)
-        LR: learning rate
-        num_epochs: continue training up to this many epochs
-        dataloaders: pytorch train and val dataloaders
-        dataset_sizes: length of train and val datasets
-        weight_decay: weight decay parameter we use in SGD with momentum
-    Returns:
-        model: trained torchvision model
-        best_epoch: epoch on which best model val loss was obtained
-
-    """
     since = time.time()
 
     start_epoch = 1
@@ -182,6 +167,109 @@ def train_model(
     checkpoint_best = torch.load('results/checkpoint')
     model = checkpoint_best['model']
 
+    return model, best_epoch
+"""
+
+def train_model(
+        model,
+        criterion,
+        optimizer,
+        LR,
+        num_epochs,
+        dataloaders,
+        dataset_sizes,
+        weight_decay,
+        lr_decay_factor=2,  # Change decay factor from 10 to 2 for a gentler decay
+        patience=5):  # Increase patience from 3 to 5 epochs
+    """
+    Fine tunes torchvision model to NIH CXR data.
+
+    Args:
+        model: torchvision model to be finetuned (densenet-121 in this case)
+        criterion: loss criterion (binary cross entropy loss, BCELoss)
+        optimizer: optimizer to use in training (SGD)
+        LR: learning rate
+        num_epochs: continue training up to this many epochs
+        dataloaders: pytorch train and val dataloaders
+        dataset_sizes: length of train and val datasets
+        weight_decay: weight decay parameter we use in SGD with momentum
+        lr_decay_factor: factor by which the learning rate will be reduced
+        patience: number of epochs to wait before early stopping if no improvement in validation loss
+    Returns:
+        model: trained torchvision model
+        best_epoch: epoch on which best model val loss was obtained
+    """
+    since = time.time()
+
+    best_loss = float('inf')
+    best_epoch = -1
+    epochs_without_improvement = 0  # Counter for epochs without improvement
+
+    # iterate over epochs
+    for epoch in range(1, num_epochs + 1):  # start_epoch is always 1 in your original code
+        print('Epoch {}/{}'.format(epoch, num_epochs))
+        print('-' * 10)
+
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                model.train()  # Set model to training mode
+            else:
+                model.eval()   # Set model to evaluate mode
+
+            running_loss = 0.0
+
+            # Iterate over data.
+            for data in dataloaders[phase]:
+                inputs, labels = data[:2]  # Skip third return value ('_')
+                inputs, labels = inputs.cuda(), labels.cuda()
+
+                optimizer.zero_grad()
+
+                # forward
+                with torch.set_grad_enabled(phase == 'train'):
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+
+                    # backward + optimize only if in training phase
+                    if phase == 'train':
+                        loss.backward()
+                        optimizer.step()
+
+                running_loss += loss.item() * inputs.size(0)
+
+            epoch_loss = running_loss / dataset_sizes[phase]
+
+            print('{} Loss: {:.4f}'.format(phase, epoch_loss))
+
+            # Deep copy the model if we have the best validation loss
+            if phase == 'val' and epoch_loss < best_loss:
+                best_loss = epoch_loss
+                best_epoch = epoch
+                epochs_without_improvement = 0  # Reset counter
+                best_model_wts = deepcopy(model.state_dict())
+                checkpoint(model, best_loss, epoch, LR)
+            elif phase == 'val':
+                epochs_without_improvement += 1  # Increment counter
+
+        # Check early stopping condition
+        if epochs_without_improvement >= patience:
+            print('Early stopping triggered after {} epochs without improvement'.format(patience))
+            break
+
+        # Reduce learning rate if no improvement
+        if epochs_without_improvement and epochs_without_improvement % patience == 0:
+            LR /= lr_decay_factor
+            print("Reducing learning rate to {}".format(LR))
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = LR
+
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60))
+    print('Best val Loss: {:4f}'.format(best_loss))
+
+    # Load best model weights
+    model.load_state_dict(best_model_wts)
     return model, best_epoch
 
 
