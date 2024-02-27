@@ -168,6 +168,7 @@ def train_model(
     model = checkpoint_best['model']
 
     return model, best_epoch
+
 """
 
 def train_model(
@@ -178,98 +179,103 @@ def train_model(
         num_epochs,
         dataloaders,
         dataset_sizes,
-        weight_decay,
-        lr_decay_factor=2,  # Change decay factor from 10 to 2 for a gentler decay
-        patience=5):  # Increase patience from 3 to 5 epochs
-    """
-    Fine tunes torchvision model to NIH CXR data.
+        weight_decay):
 
-    Args:
-        model: torchvision model to be finetuned (densenet-121 in this case)
-        criterion: loss criterion (binary cross entropy loss, BCELoss)
-        optimizer: optimizer to use in training (SGD)
-        LR: learning rate
-        num_epochs: continue training up to this many epochs
-        dataloaders: pytorch train and val dataloaders
-        dataset_sizes: length of train and val datasets
-        weight_decay: weight decay parameter we use in SGD with momentum
-        lr_decay_factor: factor by which the learning rate will be reduced
-        patience: number of epochs to wait before early stopping if no improvement in validation loss
-    Returns:
-        model: trained torchvision model
-        best_epoch: epoch on which best model val loss was obtained
-    """
     since = time.time()
 
-    best_loss = float('inf')
+    start_epoch = 1
+    best_loss = 999999
     best_epoch = -1
-    epochs_without_improvement = 0  # Counter for epochs without improvement
+    last_train_loss = -1
+    epochs_without_improvement = 0  # New: track epochs without improvement
+    patience = 5  # old: 3
 
     # iterate over epochs
-    for epoch in range(1, num_epochs + 1):  # start_epoch is always 1 in your original code
+    for epoch in range(start_epoch, num_epochs + 1):
         print('Epoch {}/{}'.format(epoch, num_epochs))
         print('-' * 10)
 
+        # set model to train or eval mode based on whether we are in train or
+        # val; necessary to get correct predictions given batchnorm
         for phase in ['train', 'val']:
             if phase == 'train':
-                model.train()  # Set model to training mode
+                model.train(True)
             else:
-                model.eval()   # Set model to evaluate mode
+                model.train(False)
 
             running_loss = 0.0
 
-            # Iterate over data.
+            i = 0
+            total_done = 0
+            # iterate over all data in train/val dataloader:
             for data in dataloaders[phase]:
-                inputs, labels = data[:2]  # Skip third return value ('_')
-                inputs, labels = inputs.cuda(), labels.cuda()
+                i += 1
+                inputs, labels, _ = data
+                batch_size = inputs.shape[0]
+                inputs = Variable(inputs.cuda())
+                labels = Variable(labels.cuda()).float()
+                outputs = model(inputs)
 
+                # calculate gradient and update parameters in train phase
                 optimizer.zero_grad()
+                loss = criterion(outputs, labels)
+                if phase == 'train':
+                    loss.backward()
+                    optimizer.step()
 
-                # forward
-                with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)
-
-                    # backward + optimize only if in training phase
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
-
-                running_loss += loss.item() * inputs.size(0)
+                running_loss += loss.data * batch_size
 
             epoch_loss = running_loss / dataset_sizes[phase]
 
-            print('{} Loss: {:.4f}'.format(phase, epoch_loss))
+            if phase == 'train':
+                last_train_loss = epoch_loss
 
-            # Deep copy the model if we have the best validation loss
-            if phase == 'val' and epoch_loss < best_loss:
-                best_loss = epoch_loss
-                best_epoch = epoch
-                epochs_without_improvement = 0  # Reset counter
-                best_model_wts = deepcopy(model.state_dict())
-                checkpoint(model, best_loss, epoch, LR)
-            elif phase == 'val':
-                epochs_without_improvement += 1  # Increment counter
+            print(phase + ' epoch {}:loss {:.4f} with data size {}'.format(
+                epoch, epoch_loss, dataset_sizes[phase]))
 
-        # Check early stopping condition
-        if epochs_without_improvement >= patience:
-            print('Early stopping triggered after {} epochs without improvement'.format(patience))
-            break
+            # Check for validation phase and update learning rate and early stopping
+            if phase == 'val':
+                if epoch_loss < best_loss:
+                    best_loss = epoch_loss
+                    best_epoch = epoch
+                    epochs_without_improvement = 0  # Reset counter since we have improvement
+                    checkpoint(model, best_loss, epoch, LR)  # Save the best model
+                else:
+                    epochs_without_improvement += 1  # Increment counter since no improvement
+                    print(f"No improvement in validation loss for {epochs_without_improvement} epochs.")
+                    
+                    # Check for early stopping
+                    if epochs_without_improvement >= patience:
+                        print(f"Stopping early due to no improvement in validation loss for {patience} consecutive epochs.")
+                        break  # Break from the training loop
 
-        # Reduce learning rate if no improvement
-        if epochs_without_improvement and epochs_without_improvement % patience == 0:
-            LR /= lr_decay_factor
-            print("Reducing learning rate to {}".format(LR))
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = LR
+                    # Learning rate decay
+                    if epochs_without_improvement == patience:  # Adjust if needed
+                        LR /= 2 # old: 10
+                        print(f"Reducing learning rate to {LR}.")
+                        for param_group in optimizer.param_groups:
+                            param_group['lr'] = LR
+                        epochs_without_improvement = 0  # Optionally reset improvements
+
+            # Log training and validation loss over each epoch
+            if phase == 'val':
+                with open("results/log_train", 'a') as logfile:
+                    logwriter = csv.writer(logfile, delimiter=',')
+                    if(epoch == 1):
+                        logwriter.writerow(["epoch", "train_loss", "val_loss"])
+                    logwriter.writerow([epoch, last_train_loss, epoch_loss])
+
+        total_done += batch_size
+        if(total_done % (100 * batch_size) == 0):
+            print(f"Completed {total_done} so far in epoch.")
 
     time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
-    print('Best val Loss: {:4f}'.format(best_loss))
+    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
-    # Load best model weights
-    model.load_state_dict(best_model_wts)
+    # Load best model weights to return
+    checkpoint_best = torch.load('results/checkpoint')
+    model = checkpoint_best['model']
+
     return model, best_epoch
 
 
