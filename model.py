@@ -263,12 +263,12 @@ def train_cnn(PATH_TO_IMAGES, LR, WEIGHT_DECAY):
         transformed_datasets['train'],
         batch_size=BATCH_SIZE,
         shuffle=True,
-        num_workers=8)
+        num_workers=4)
     dataloaders['val'] = torch.utils.data.DataLoader(
         transformed_datasets['val'],
         batch_size=BATCH_SIZE,
         shuffle=True,
-        num_workers=8)
+        num_workers=4)
 
     # please do not attempt to train without GPU as will take excessively long
     if not use_gpu:
