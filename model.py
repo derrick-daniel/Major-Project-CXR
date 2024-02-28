@@ -143,8 +143,8 @@ def train_model(
                 ##LR = LR / 10
 
                 #NEW:
-                print("decay loss from " + str(LR) + " to " + str(LR / 2) + " as not seeing improvement in val loss")
-                LR = LR / 2
+                print("decay loss from " + str(LR) + " to " + str(LR / 10) + " as not seeing improvement in val loss")
+                LR = LR / 10
                 # create new optimizer with lower learning rate
                 optimizer = optim.SGD(
                     filter(

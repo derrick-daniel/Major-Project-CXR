@@ -105,7 +105,8 @@ def make_pred_multilabel(data_transforms, model, PATH_TO_IMAGES):
                 actual.to_numpy().astype(int), pred.to_numpy())
         except ValueError as e:  # More specific exception handling
             print(f"Can't calculate AUC for {column}: {str(e)}")
-        auc_df = auc_df.append(thisrow, ignore_index=True)  
+        #auc_df = auc_df.append(thisrow, ignore_index=True)  
+        auc_df = pd.concat([auc_df, pd.DataFrame([thisrow])], ignore_index=True)
 
 
     pred_df.to_csv("results/preds.csv", index=False)
