@@ -216,6 +216,60 @@ def load_data(
     
     return iter(dataloader), model
 
+def load_data_v2(PATH_TO_IMAGES, LABEL, PATH_TO_MODEL, POSITIVE_FINDINGS_ONLY, STARTER_IMAGES):
+    """
+    Loads dataloader and model state dict from .pth file.
+
+    Args:
+        PATH_TO_IMAGES: path to NIH CXR images
+        LABEL: finding of interest (must exactly match one of FINDINGS defined below or will get error)
+        PATH_TO_MODEL: path to downloaded pretrained model (.pth file) or your own retrained model
+        POSITIVE_FINDINGS_ONLY: dataloader will show only examples + for LABEL pathology if True, otherwise shows positive
+                                and negative examples if false
+        STARTER_IMAGES: Boolean indicating whether to use a subset of images for quick testing
+
+    Returns:
+        dataloader: dataloader with test examples to show
+        model: loaded model with weights applied
+    """
+    # Initialize the model architecture (make sure it matches the architecture used for training)
+    model = models.densenet121(pretrained=False)  # Assuming using DenseNet121
+
+    # Load the trained weights from the .pth file
+    state_dict = torch.load(PATH_TO_MODEL, map_location='cpu')
+    model.load_state_dict(state_dict)
+
+    model.cpu()  # Use .cuda() if using GPU
+
+    # Continue with the rest of the function to set up the dataloader...
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+
+    data_transform = transforms.Compose([
+        transforms.Resize(224),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+
+    if not POSITIVE_FINDINGS_ONLY:
+        finding = "any"
+    else:
+        finding = LABEL
+
+    dataset = CXR.CXRDataset(
+        path_to_images=PATH_TO_IMAGES,
+        fold='test',
+        transform=data_transform,
+        finding=finding,
+        starter_images=STARTER_IMAGES)
+    
+    dataloader = torch.utils.data.DataLoader(
+        dataset, batch_size=1, shuffle=False, num_workers=4)
+    
+    return iter(dataloader), model
+
+
 
 def show_next(dataloader, model, LABEL):
     """
