@@ -72,7 +72,7 @@ def train_model(
     Fine tunes torchvision model to NIH CXR data.
 
     Args:
-        model: torchvision model to be finetuned (densenet-121 in this case)
+        model: torchvision model to be finetuned (ResNet50 in this case)
         criterion: loss criterion (binary cross entropy loss, BCELoss)
         optimizer: optimizer to use in training (SGD)
         LR: learning rate
