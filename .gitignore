@@ -1,3 +1,5 @@
 __pycache__/
 results/
 Misc/Data/
+pretrained-DenseNet201/checkpoint
+pretrained-ResNet152/checkpoint
