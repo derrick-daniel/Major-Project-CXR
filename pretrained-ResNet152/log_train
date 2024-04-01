@@ -1,0 +1,8 @@
+epoch,train_loss,val_loss
+1,"tensor(0.1676, device='cuda:0')","tensor(0.1573, device='cuda:0')"
+2,"tensor(0.1539, device='cuda:0')","tensor(0.1527, device='cuda:0')"
+3,"tensor(0.1472, device='cuda:0')","tensor(0.1505, device='cuda:0')"
+4,"tensor(0.1419, device='cuda:0')","tensor(0.1491, device='cuda:0')"
+5,"tensor(0.1372, device='cuda:0')","tensor(0.1502, device='cuda:0')"
+6,"tensor(0.1253, device='cuda:0')","tensor(0.1500, device='cuda:0')"
+7,"tensor(0.1207, device='cuda:0')","tensor(0.1508, device='cuda:0')"
