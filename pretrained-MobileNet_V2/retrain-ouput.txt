@@ -1,0 +1,45 @@
+Epoch 1/100
+----------
+train epoch 1:loss 0.1628 with data size 78468
+val epoch 1:loss 0.1546 with data size 11219
+saving
+Epoch 2/100
+----------
+train epoch 2:loss 0.1532 with data size 78468
+val epoch 2:loss 0.1507 with data size 11219
+saving
+Epoch 3/100
+----------
+train epoch 3:loss 0.1494 with data size 78468
+val epoch 3:loss 0.1491 with data size 11219
+saving
+Epoch 4/100
+----------
+train epoch 4:loss 0.1470 with data size 78468
+val epoch 4:loss 0.1502 with data size 11219
+decay loss from 0.01 to 0.001 as not seeing improvement in val loss
+created new optimizer with LR 0.001
+Epoch 5/100
+----------
+train epoch 5:loss 0.1403 with data size 78468
+val epoch 5:loss 0.1466 with data size 11219
+saving
+Epoch 6/100
+----------
+train epoch 6:loss 0.1380 with data size 78468
+val epoch 6:loss 0.1468 with data size 11219
+decay loss from 0.001 to 0.0001 as not seeing improvement in val loss
+created new optimizer with LR 0.0001
+Epoch 7/100
+----------
+train epoch 7:loss 0.1363 with data size 78468
+val epoch 7:loss 0.1468 with data size 11219
+decay loss from 0.0001 to 1e-05 as not seeing improvement in val loss
+created new optimizer with LR 1e-05
+Epoch 8/100
+----------
+train epoch 8:loss 0.1360 with data size 78468
+val epoch 8:loss 0.1470 with data size 11219
+decay loss from 1e-05 to 1.0000000000000002e-06 as not seeing improvement in val loss
+created new optimizer with LR 1.0000000000000002e-06
+no improvement in 3 epochs, break
